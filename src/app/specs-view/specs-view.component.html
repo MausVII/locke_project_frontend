@@ -1,0 +1,11 @@
+<div class="w-full bg-zinc-800 text-white m-4 p-4">
+    <p class="w-full text-center text-2xl mb-4">{{userDataService.username}}'s Spec Files</p>
+    <div *ngFor="let spec of filesService.specs"
+     class="w-full grid grid-cols-5">
+        <p class="text-lg text-center">{{spec.name}}</p>
+        <p class="text-lg text-center">{{spec.fields.length}} Fields</p>
+        <p class="text-lg text-center">{{spec.parsedFileIds.length}} Parsed Files</p>
+        <p class="text-lg text-center">{{spec.recordIds.length}} Records</p>
+        <p class="text-lg text-center">{{spec.createdAt.split('T')[0]}}</p>
+    </div>
+</div>

@@ -1,9 +1,9 @@
 <main>
   <app-nav-bar></app-nav-bar>
-  <section class="content w-full">
-    <app-records-view></app-records-view>
+  <section class="w-full flex flex-col items-center">
+    <app-notification></app-notification>
+    <router-outlet class="w-full"/>
   </section>
 </main>
 
 
-<router-outlet />

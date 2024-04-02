@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { UserDataService } from '../user-data.service';
-import { NgIf } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { NgIf  } from '@angular/common';
 @Component({
   selector: 'app-nav-bar',
   standalone: true,
-  imports: [NgIf],
+  imports: [NgIf, RouterLink],
   templateUrl: './nav-bar.component.html',
   styleUrl: './nav-bar.component.css'
 })

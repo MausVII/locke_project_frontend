@@ -1,15 +1,26 @@
-<div class="flex flex-wrap">
-    <div class="m-4 max-w-sm rounded overflow-hidden shadow-lg"
-     *ngFor="let record of userDataService.records">
-     <img class="w-full" src={{userDataService.formatThumbUrl(record.thumbUrl)}} alt="No Thumbnail">
-     <div class="px-6 py-4">
-         <div class="font-bold text-xl mb-2">{{record.name}}</div>
-         <p class="text-gray-700 text-base">{{record.artist}}</p>
-     </div>
-     <div class="px-6 pt-4 pb-2">
-        <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">{{record.album}}</span>
-        <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">{{record.genre}}</span>
-        <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">{{record.publishDate}}</span>
-     </div>
+<div class="w-full flex flex-wrap">
+    <div class="m-4 p-4 bg-white shadow-md border border-teal-500" *ngIf="hasNoRecords()">
+        <p>There are no associated flat files with this account. Head to home and upload a spec file followed by a flat file.</p>
     </div>
+    <!-- <div *ngIf="userDataService.records == true; else norecords"> -->
+        <div class="bg-zinc-800 text-white flex flex-row w-96 m-4 rounded overflow-hidden shadow-lg"
+        *ngFor="let record of filesService.records">
+        <div *ngIf="record.fields.thumbUrl" class="w-48 flex justify-center items-center">
+            <img class="object-scale-down" src={{filesService.formatThumbUrl(record.fields.thumbUrl)}} alt="No Thumbnail">
+        </div>
+         <div class="flex flex-col">
+             <div class="px-6 py-4">
+                 <div class="font-bold text-xl mb-2">{{record.fields.name}}</div>
+             </div>
+             <div class="flex flex-wrap px-6 pt-4 pb-2">
+                <div *ngFor="let tag of filesService.getTags(record)" class="w-full flex justify-between border-b-2 border-green-800 text-white px-3 py-1 text-sm font-semibold mr-2 mb-2 hover:cursor-pointer"
+                (click)="onSelectTag(tag)"
+                ><span>{{tag[0].charAt(0).toUpperCase()}}{{tag[0].substring(1)}}:</span><span>{{tag[1]}}</span></div>
+             </div>
+         </div>
+        </div>
+    <!-- </div>
+    <ng-template #norecords>
+        <p>You currently have no records associated with this account. You can add records by uploading a spec file and a flat file.</p>
+    </ng-template> -->
 </div>

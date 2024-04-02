@@ -1,71 +1,182 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { environment } from '../environments/environment.development';
+import { Router } from '@angular/router';
+import { ReqInfoService } from './req-info.service';
+import { saveAs } from 'file-saver';
+import { FilesService } from './files.service';
 
 interface User {
   id: string
   username: string
-  role: string
+  role: Role[]
+  createdAt: Date | null
+  specFileIds: string[]
+  parsedFileIds: string[]
+  recordIds: string[]
+}
+
+interface Role {
+  id: string
+  authority: string
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserDataService {
-  url = "http://localhost:8080/api/v1/users/id/65ef310c769e4f7b49b4188c"
-  recordsUrl = "http://localhost:8080/api/v1/users/id/65ef310c769e4f7b49b4188c/records"
-
+  filesService: FilesService
+  reqInfoService: ReqInfoService
   userData: User
-  userRecords: any[] | [][] = new Array()
+  lastHistory: MetaTag | null = null
+  token: string | null = null
 
-  constructor() {
-    this.userData = {id: "", username: "", role: ""}
-    this.fetchUserData().then(data => {
-      this.userData = data
+  constructor(private http: HttpClient, private router: Router, filesService: FilesService, reqInfoService: ReqInfoService) {
+    this.userData = {id: "", username: "", role: [], createdAt: null, specFileIds: [], parsedFileIds: [], recordIds: []}
+    this.filesService = filesService
+    this.reqInfoService = reqInfoService
+  }
+
+  signup(userData: {username: string, password: string, role: string}) {
+    this.http.post<User>(`${environment.apiUrl}/users/register`, {
+      username: userData.username, password: userData.password, role: userData.role
+    }, {observe: "response", withCredentials: true})
+    .subscribe({next: res => {
+      if(res.status == 400) {
+
+      } else if(res.body) {
+        this.userData = res.body
+        this.router.navigate(['home'])
+      }
+    }})
+  }
+
+  login(userData: {username: string, password: string}) {
+    this.http.post<User>(`${environment.apiUrl}/auth/login`, {
+      username: userData.username,
+      password: userData.password
+    }, {
+      observe: "response",
+      withCredentials: true,
     })
+    .subscribe({
+      next: (res) => {
+        if(res.body) {
+          if(res.headers.get('authorization')) {
+            this.token = res.headers.get('authorization')
+          }
 
-    // From [[{a: x}, {b: y}, {}], [{}, {}, {}]] => [{a: x, b: y}, {}, {}]
-    this.fetchUserRecords().then( data => {
-      this.userRecords = data.map((record: any) => {
-        // Return object from merging array of properties into one
-        return Object.assign({}, ...record.map((field: any) => {
-          let temp: any = {}
-          temp[field.name] = this.convertData(field.data, field.dataType)
-          return temp
-        }))
-      })
+          this.userData = res.body
+          this.filesService.setUserId = res.body.id
+          this.filesService.getRecords()
+          this.filesService.getSpecs()
+          this.getLastHistory()
+
+          this.router.navigate(['home'])
+        }
+      }
     })
-
   }
 
-  async fetchUserData() : Promise<User> {
-    const data = await fetch(this.url)
-    return await data.json() ?? []
+  getUserData() {
+    this.http.get<User>(`${environment.apiUrl}/users/${this.userData.id}`, {withCredentials: true})
+    .subscribe({ next: (data) => this.userData = data})
   }
 
-  async fetchUserRecords() {
-    const response = await fetch(this.recordsUrl)
-    let jsonData = await response.json() ?? []
-    return jsonData
+  logout() {
+    this.reqInfoService.logInSucceeded()
+    this.userData = {id: "", username: "", role: [], createdAt: null, specFileIds: [], parsedFileIds: [], recordIds: []}
+    this.token = null
   }
 
-  private convertData(data: string, dType: string): string | number | Date {
-    switch(dType) {
-      case "Integer":
-        return parseInt(data)
-      case "Date":
-        return new Date(data.replace("/", "-"))
-      default:
-        return data
-    }
+  public uploadSpecFile(file: File) {
+    let reqData = new FormData()
+    reqData.append("file", file)
+    reqData.append("specName", file.name)
+
+    this.http.post(`${environment.apiUrl}/files/spec-file/user/${this.userData.id}`, reqData, {observe: "response", withCredentials: true})
+    .subscribe({ next: res => {
+      if (res.status == 201) {
+        this.reqInfoService.succeededSpecUpload()
+      } else {
+        this.reqInfoService.failedSpecUpload()
+      }
+    }})
+  }
+
+  public uploadFlatFile(file: File, specId: string) {
+    let reqData = new FormData()
+    reqData.append("file", file)
+    reqData.append("flatFileName", file.name)
+    reqData.append("specFileId", specId)
+
+    this.http.post(`${environment.apiUrl}/files/flat-file/user/${this.userData.id}`, reqData, {observe: "response", withCredentials: true})
+    .subscribe({ next: res => {
+      if (res.status == 201) {
+        this.reqInfoService.succeededFlatUpload()
+
+        this.filesService.getRecords()
+      } else {
+        this.reqInfoService.failedFlatUpload()
+      }
+    }})
+  }
+
+  public getLastHistory() {
+    this.http.get<MetaTag>(`${environment.apiUrl}/files/history/last/${this.userData.id}`, {withCredentials: true})
+    .subscribe({ next: (data) => {
+      this.lastHistory = data
+    }})
+  }
+
+  get specs() {
+    return this.userData.specFileIds
+  }
+
+  get parsed() {
+    return this.userData.parsedFileIds
+  }
+
+  get records() {
+    return this.userData.recordIds
+  }
+
+  // getFilePaths() {
+  //   this.http.get<string[]>(`${environment.apiUrl}/files/flat-files/paths/user/${this.userData.id}`)
+  //   .subscribe({ next: data => {
+  //     this.userFlatFiles = data
+  //   }})
+  // }
+
+  downloadFile(filename: string) {
+    this.http.get(`${environment.apiUrl}/files/flat-files/file/${filename}/user/${this.userData.id}`,
+    {responseType: 'arraybuffer', withCredentials: true})
+    .subscribe({ next: data => {
+      saveAs(new Blob([data]), filename)
+    }})
   }
   
   public get username() : string {
     return this.userData.username
   }
 
-  public get records(): any {
-    return this.userRecords
+  public isAdmin(): boolean {
+    return this.userData.role.filter(x => x.authority == "ADMIN").length == 1
   }
-  
+
+  public get createdAt(): string {
+    return this.userData.createdAt ? this.userData.createdAt?.toString().split("T")[0].replaceAll("-", "/") 
+    : ""
+  }
+
+  public get hasSpecs(): boolean {
+    return this.userData.specFileIds.length > 0
+  }
+
+  public get history() {
+    return this.lastHistory
+  }
+
   formatThumbUrl(key: string) {
     return `/assets/images/thumbs/${key}.jpg`
   }
@@ -75,13 +186,12 @@ export class UserDataService {
   }
 }
 
-interface Field {
-  name: string
-  data: string | number
-}
-
-interface RawField {
-  name: string
-  data: string
-  dataType: string
+interface MetaTag {
+  id: string
+  userId: string
+  createdAt: Date
+  operation: string
+  fileName: string
+  fileId: string
+  recordsCreated: string[]
 }

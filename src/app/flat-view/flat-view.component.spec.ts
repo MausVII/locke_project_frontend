@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { SignUpFormComponent } from './sign-up-form.component';
+import { FlatViewComponent } from './flat-view.component';
 
-describe('LoginFormComponent', () => {
-  let component: SignUpFormComponent;
-  let fixture: ComponentFixture<SignUpFormComponent>;
+describe('FlatViewComponent', () => {
+  let component: FlatViewComponent;
+  let fixture: ComponentFixture<FlatViewComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SignUpFormComponent]
+      imports: [FlatViewComponent]
     })
     .compileComponents();
     
-    fixture = TestBed.createComponent(SignUpFormComponent);
+    fixture = TestBed.createComponent(FlatViewComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
